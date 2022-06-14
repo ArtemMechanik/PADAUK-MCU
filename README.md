@@ -1,0 +1,2 @@
+# PADAUK-MCU
+Notes about PADAUK MCU
