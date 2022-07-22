@@ -10,11 +10,22 @@
 #define BACKWARD 2
 
 #define DEADTIME 1000
-#define PHASE_DEL 100
+#define PHASE_DEL 40000
 
-BYTE motorDirection = 0;
-WORD stepperPhaseDel[9]; 		  // задержки между фазами
-BYTE stepperPhase[9]; // лог. состояни???инов дл???аждой фазы ??газ
+BYTE motorDirection = STOP;
+
+//BYTE phaseCounter = 0; // считаем фазу порота
+WORD stepperPhaseDel[10]; 		  // задержки между фазами
+BYTE stepperPhase[10]; // лог. состояни???инов дл???аждой фазы ??газ
+
+WORD pntStart, pntEND, phaseCounter;
+
+WORD stepperDelValue = 0;
+void stepperDel (void) {
+	while(stepperDelValue > 0) {
+		.DELAY 1;
+	}
+}
 
 
 void	FPPA0 (void)
@@ -23,7 +34,7 @@ void	FPPA0 (void)
 
 	
 	// заполн??м массив ??гов и задрежек
-	// перебираем массив в одну сторону - моторчик крутит????? одну сторону
+	// перебираем массив в одну сторону - моторчик крутитится в лево, перебираем в другую - в право
 	stepperPhase[1] = (0<<AP)|(0<<AN)|(1<<BN)|(0<<BP);
 	stepperPhase[2] = (0<<AP)|(1<<AN)|(1<<BN)|(0<<BP);
 	stepperPhase[3] = (0<<AP)|(1<<AN)|(0<<BN)|(0<<BP);
@@ -34,16 +45,21 @@ void	FPPA0 (void)
 	stepperPhase[8] = (1<<AP)|(0<<AN)|(1<<BN)|(0<<BP);
 
 
-	stepperPhaseDel[0] = PHASE_DEL;
-	stepperPhaseDel[1] = DEADTIME;
-	stepperPhaseDel[2] = PHASE_DEL;
-	stepperPhaseDel[3] = DEADTIME;
-	stepperPhaseDel[4] = PHASE_DEL;
-	stepperPhaseDel[5] = DEADTIME;
-	stepperPhaseDel[6] = PHASE_DEL;
-	stepperPhaseDel[7] = DEADTIME;
-	
-	motorDirection = 8;
+	stepperPhaseDel[1] = PHASE_DEL;
+	stepperPhaseDel[2] = DEADTIME;
+	stepperPhaseDel[3] = PHASE_DEL;
+	stepperPhaseDel[4] = DEADTIME;
+	stepperPhaseDel[5] = PHASE_DEL;
+	stepperPhaseDel[6] = DEADTIME;
+	stepperPhaseDel[7] = PHASE_DEL;
+	stepperPhaseDel[8] = DEADTIME;
+
+	// нельзя просто так вз??ь и написать stepperPhase[phaseCounter] - выдаёт от??бку 
+	// по??ому, будем через указатели работать...
+	pntStart = & stepperPhase[0];
+	pntEND = & stepperPhase[9];
+	phaseCounter = pntStart;
+
 
 	//	$ PA.3 Out; // нижний мост
 	//	$ PA.6 Out;
@@ -55,15 +71,55 @@ void	FPPA0 (void)
 	PB = 0b00000000;
 	PBC = 0b00000000;
 
-	while(1) {
+	while(1)
+	{
+		// провер??м кака???нопка нажатан
+		if(PA.4 == 0)
+		{
+			phaseCounter += 1;
+			motorDirection = FORWRD;
+		}
+		else 
+		{
+			motorDirection = STOP;
+		}
 
-	// пины кнопок на вход
-	//$ PA.4 In, NoPull; // правая
-	//$ PB.0 In, NoPull; // лева???????????????????????????????????????????????????????????????????????бмотка А		// обмотка B
-			
+		if(PB.0 == 0)
+		{
+			phaseCounter -= 1;
+			motorDirection = BACKWARD;
+		}
+		else
+		{
+			motorDirection = STOP;
+		}
+
+
+
+
+		// контроль переполнения счётчика
+		if(phaseCounter == pntStart) 
+		{
+			phaseCounter = pntEND - 1; 
+		}
+		else if(phaseCounter == pntEND)
+		{ 
+			phaseCounter = pntStart + 1; 
+		}
+
+		// ??гаем по массиву фазы
+		if(motorDirection != STOP)
+		{
+			PA = (PA & 0b00010111) | (*phaseCounter);
+		} 
+		else {
+			PA = (PA & 0b00010111);
+		}
+		.DELAY 40000;
+
+
+			/*
 		if(PA.4 == 0) {
-			PA = (PA & 0b00010111) | stepperPhase[8]; 
-			.DELAY 40000;
 			PA = (PA & 0b00010111) | stepperPhase[1];
 			.DELAY DEADTIME;
 			PA = (PA & 0b00010111) | stepperPhase[2];
@@ -78,6 +134,8 @@ void	FPPA0 (void)
 			.DELAY 40000;
 			PA = (PA & 0b00010111) | stepperPhase[7];
 			.DELAY DEADTIME;
+			PA = (PA & 0b00010111) | stepperPhase[8]; 
+			.DELAY 40000;
 		}
 		else if(PB.0 == 0) {
 			PA = (PA & 0b00010111) | stepperPhase[8];
@@ -100,6 +158,7 @@ void	FPPA0 (void)
 		else {
 			PA = (PA & 0b00010111);
 		}
+		*/
 	 	//PA = 0b00000000;//PA = (PA & 0b00010111);
 
 		//PA = 0b00000000;
