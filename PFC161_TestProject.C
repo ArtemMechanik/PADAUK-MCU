@@ -5,7 +5,8 @@
 #define BP 3
 #define BN 6
 
-#define STOP     0 // макросы дл???правлени???оторчиком
+#define STOP     0 
+
 #define FORWRD   1
 #define BACKWARD 2
 
@@ -14,9 +15,10 @@
 
 BYTE motorDirection = STOP;
 
-//BYTE phaseCounter = 0; // считаем фазу порота
-WORD stepperPhaseDel[10]; 		  // задержки между фазами
-BYTE stepperPhase[10]; // лог. состояни???инов дл???аждой фазы ??газ
+
+WORD stepperPhaseDel[10]; 		 
+BYTE stepperPhase[10]; 
+
 
 WORD pntStart, pntEND, phaseCounter;
 
@@ -33,8 +35,9 @@ void	FPPA0 (void)
 	.ADJUST_IC	SYSCLK=IHRC/4		//	SYSCLK=IHRC/4
 
 	
-	// заполн??м массив ??гов и задрежек
-	// перебираем массив в одну сторону - моторчик крутитится в лево, перебираем в другую - в право
+	// Г§Г ГЇГ®Г«Г­??Г¬ Г¬Г Г±Г±ГЁГў ??ГЈГ®Гў ГЁ Г§Г Г¤Г°ГҐГ¦ГҐГЄ
+	// ГЇГҐГ°ГҐГЎГЁГ°Г ГҐГ¬ Г¬Г Г±Г±ГЁГў Гў Г®Г¤Г­Гі Г±ГІГ®Г°Г®Г­Гі - Г¬Г®ГІГ®Г°Г·ГЁГЄ ГЄГ°ГіГІГЁГІГЁГІГ±Гї Гў Г«ГҐГўГ®, ГЇГҐГ°ГҐГЎГЁГ°Г ГҐГ¬ Гў Г¤Г°ГіГЈГіГѕ - Гў ГЇГ°Г ГўГ®
+
 	stepperPhase[1] = (0<<AP)|(0<<AN)|(1<<BN)|(0<<BP);
 	stepperPhase[2] = (0<<AP)|(1<<AN)|(1<<BN)|(0<<BP);
 	stepperPhase[3] = (0<<AP)|(1<<AN)|(0<<BN)|(0<<BP);
@@ -54,16 +57,16 @@ void	FPPA0 (void)
 	stepperPhaseDel[7] = PHASE_DEL;
 	stepperPhaseDel[8] = DEADTIME;
 
-	// нельзя просто так вз??ь и написать stepperPhase[phaseCounter] - выдаёт от??бку 
-	// по??ому, будем через указатели работать...
+	// Г­ГҐГ«ГјГ§Гї ГЇГ°Г®Г±ГІГ® ГІГ ГЄ ГўГ§??Гј ГЁ Г­Г ГЇГЁГ±Г ГІГј stepperPhase[phaseCounter] - ГўГ»Г¤Г ВёГІ Г®ГІ??ГЎГЄГі 
+	// ГЇГ®??Г®Г¬Гі, ГЎГіГ¤ГҐГ¬ Г·ГҐГ°ГҐГ§ ГіГЄГ Г§Г ГІГҐГ«ГЁ Г°Г ГЎГ®ГІГ ГІГј...
 	pntStart = & stepperPhase[0];
 	pntEND = & stepperPhase[9];
 	phaseCounter = pntStart;
 
 
-	//	$ PA.3 Out; // нижний мост
+	//	$ PA.3 Out; // Г­ГЁГ¦Г­ГЁГ© Г¬Г®Г±ГІ
 	//	$ PA.6 Out;
-	//	$ PA.5 Out; // верхний мост
+	//	$ PA.5 Out; // ГўГҐГ°ГµГ­ГЁГ© Г¬Г®Г±ГІ
 	//	$ PA.7 Out;
 	PA = 0b00000000;
 	PAC = 0b11101000;
@@ -73,7 +76,8 @@ void	FPPA0 (void)
 
 	while(1)
 	{
-		// провер??м кака???нопка нажатан
+		// ГЇГ°Г®ГўГҐГ°??Г¬ ГЄГ ГЄГ ???Г­Г®ГЇГЄГ  Г­Г Г¦Г ГІГ Г­
+
 		if(PA.4 == 0)
 		{
 			phaseCounter += 1;
@@ -97,7 +101,7 @@ void	FPPA0 (void)
 
 
 
-		// контроль переполнения счётчика
+		// ГЄГ®Г­ГІГ°Г®Г«Гј ГЇГҐГ°ГҐГЇГ®Г«Г­ГҐГ­ГЁГї Г±Г·ВёГІГ·ГЁГЄГ 
 		if(phaseCounter == pntStart) 
 		{
 			phaseCounter = pntEND - 1; 
@@ -107,7 +111,7 @@ void	FPPA0 (void)
 			phaseCounter = pntStart + 1; 
 		}
 
-		// ??гаем по массиву фазы
+		// ??ГЈГ ГҐГ¬ ГЇГ® Г¬Г Г±Г±ГЁГўГі ГґГ Г§Г»
 		if(motorDirection != STOP)
 		{
 			PA = (PA & 0b00010111) | (*phaseCounter);
