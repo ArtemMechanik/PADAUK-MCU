@@ -1,0 +1,11 @@
+[INI]
+PROJECT=PRE_FILE
+[LINKS]
+~stepperControl1.C
+[HEAD]
+~extern.h
+[DEPEND]
+~stepperControl1.PRE
+[PRE]
+~stepperControl1.PRJ
+~stepperControl1.PRE
