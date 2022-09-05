@@ -1,0 +1,11 @@
+[INI]
+PROJECT=PRE_FILE
+[LINKS]
+~TIM16_example.C
+[HEAD]
+~extern.h
+[DEPEND]
+~TIM16_example.PRE
+[PRE]
+~TIM16_example.PRJ
+~TIM16_example.PRE
