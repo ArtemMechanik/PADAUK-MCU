@@ -1,0 +1,11 @@
+[INI]
+PROJECT=PRE_FILE
+[LINKS]
+~EXTI_example.C
+[HEAD]
+~extern.h
+[DEPEND]
+~EXTI_example.PRE
+[PRE]
+~EXTI_example.PRJ
+~EXTI_example.PRE
