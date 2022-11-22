@@ -15,6 +15,8 @@ PB1 - UART only TX for debug
 UART period send 200mS
 */
 
+//#define debug
+
 #define ADC_run_V1	0b11011000	// stert adc conversion on AD6 (PB6) - V1
 #define ADC_run_V2	0b11001000	// stert adc conversion on AD2 (PB2) - V2
 #define ADC_run_V3	0b11000000	// stert adc conversion on AD0 (PB0) - V3
@@ -86,13 +88,15 @@ void	FPPA0 (void)
 	T16M 	= 0b00111000;	// source = system clock, prescaller = 64 => F_timer = 125000Hz, value STT16 = 125 => T = 1mS
 	STT16 count16
 
-	// watchDog setup
-	clkmd	|=0b00000110;	// enable ILRC, enable wathDog
-	MISC	= 0b00000001;	// 16k ILRC
-
 	// interrupt setup
 	INTEN	= 0b00000100;	// tim16 ovf interrupt
 	INTEGS	= 0b00000000;
+
+	.Delay 20000;
+
+	// watchDog setup
+	clkmd	|=0b00000110;	// enable ILRC, enable wathDog
+	MISC	= 0b00000001;	// 16k ILRC
 
 	ENGINT;	// global interrupt enable 
 
@@ -207,15 +211,16 @@ void	FPPA0 (void)
 
 		}
 
+		#if defined (debug)
+			if(onOffAlgoritmCounter == 2) {
+				PB.7 = 1;
+			}
+			else {
+				PB.7 = 0;
+			}
+		#endif
 		
-		if(onOffAlgoritmCounter == 2) {
-			PB.7 = 1;
-		}
-		else {
-			PB.7 = 0;
-		}
-		
-		wdreset;
+		wdreset; // clear watchdog
 
 		
 	}
@@ -265,7 +270,8 @@ void	Interrupt (void)
 				uartStep = 1;
 			}
 		}
-		
+
+		#if defined (debug)
 		// UART transmit execute
 		switch(uartStep) {
 			// wait start transmit
@@ -301,6 +307,7 @@ void	Interrupt (void)
 				uartStep = 0;
 			break;				
 		}
+		#endif
 		
 
 		STT16 count16;	// load value in counter
