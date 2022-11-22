@@ -39,6 +39,11 @@ WORD V1_param = 0;
 WORD V2_param = 0;
 WORD V3_param = 0;
 
+// flag
+BYTE V1_param_flag = 0;
+BYTE V2_param_flag = 0;
+BYTE V3_param_flag = 0;
+
 //counters
 WORD timeCounter = 0;
 WORD timeCounter_threshold = 0;
@@ -108,22 +113,24 @@ void	FPPA0 (void)
 
 		// set V1,V2,V3 modes, set parameters according to the modes
 		V1_param = 1500;
-		if(V1_adc_value > 80)	V1_param = 1500;
-		if(V1_adc_value > 150)	V1_param = 3000;
-		if(V1_adc_value > 185)	V1_param = 4500;
-		if(V1_adc_value > 205)	V1_param = 6000;
+		V1_param_flag = 0;
+		if(V1_adc_value > 75)	{ V1_param = 1500; V1_param_flag = 1; }
+		if(V1_adc_value > 145)	{ V1_param = 3000; V1_param_flag = 2; }
+		if(V1_adc_value > 180)	{ V1_param = 4500; V1_param_flag = 3; }
+		if(V1_adc_value > 200)	{ V1_param = 6000; V1_param_flag = 4; }
 
 		V2_param = 0;
-		if(V2_adc_value > 80)	V2_param = 0;
-		if(V2_adc_value > 150)	V2_param = 2000;
-		if(V2_adc_value > 185)	V2_param = 4000;
-		if(V2_adc_value > 205)	V2_param = 6000;
+		V2_param_flag = 0;
+		if(V2_adc_value > 75)	{ V2_param = 0;	   V2_param_flag = 1; }
+		if(V2_adc_value > 145)	{ V2_param = 2000; V2_param_flag = 2; }
+		if(V2_adc_value > 180)	{ V2_param = 4000; V2_param_flag = 3; }
+		if(V2_adc_value > 200)	{ V2_param = 6000; V2_param_flag = 4; }
 
 		V3_param = 255;							// disable
-		if(V3_adc_value > 80)	V3_param = 102; // 40%
-		if(V3_adc_value > 150)	V3_param = 153;	// 60%
-		if(V3_adc_value > 185)	V3_param = 205;	// 80%
-		if(V3_adc_value > 205)	V3_param = 254;	// 100%
+		if(V3_adc_value > 75)	V3_param = 102; // 40%
+		if(V3_adc_value > 145)	V3_param = 153;	// 60%
+		if(V3_adc_value > 180)	V3_param = 205;	// 80%
+		if(V3_adc_value > 200)	V3_param = 254;	// 100%
 
 		// control A2 output
 		if(PWM_dutyCycle > V3_param) PB.5 = 1;
@@ -180,8 +187,8 @@ void	FPPA0 (void)
 			// switch off, setup timer
 			case 6:
 				timeCounter = 0;
-				timeCounter_threshold = V1_param;
-				PWM_dutyCycle_per = V1_param>>8;
+				timeCounter_threshold = 6000;
+				PWM_dutyCycle_per = 6000>>8;
 				PWM_dutyCycle_counter = 0;
 				PWM_dutyCycle_dir = 0;
 				onOffAlgoritmCounter = 7;
@@ -270,7 +277,7 @@ void	Interrupt (void)
 			case 1:
 				PB.1 = 0;
 				uartDataBitCounter = 0;
-				tempData = V3_param;
+				tempData = V1_param_flag;
 				uartStep = 2;
 			break;
 
