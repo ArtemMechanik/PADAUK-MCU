@@ -76,13 +76,13 @@ void	FPPA0 (void)
 	// setup timer2 to generate PWM 15kHz on PA3
 	tm2c	= 0; 				//0b00101010; clock - IHRC (16 Mhz), output PWM - PA3, PWMmode, inverse the polarity - disable
 	tm2ct	= 0;
-	tm2s	= 0b00100011;		// 8bit PWM, pre-scalar = 4, clock scalar = 3 
+	tm2s	= 0b01001111;		// 8bit PWM, pre-scalar = 16, clock scalar = 15
 	tm2b	= PWM_dutyCycle;	// start duty cycle = 5%
 
-	PBDIER	= 0b00010000;	// disable all wake-up event from portB
+	PBDIER	= 0b00100000;	// disable all wake-up event from portB
 	PB		= 0b00000000;
-	PBC 	= 0b10100010;	// PB7-output (test), PB5 - output, PB4 - input, PB1 - output (UART)
-	PBPL	= 0b00010000;	// PB4 - pull-low 
+	PBC 	= 0b10010010;	// PB7-output (test), PB5 - input, PB4 - output, PB1 - output (UART)
+	PBPL	= 0b00100000;	// PB5 - pull-low 
 
 	// setup timer16 to generate interrupt 1kHz
 	T16M 	= 0b00111000;	// source = system clock, prescaller = 64 => F_timer = 125000Hz, value STT16 = 125 => T = 1mS
@@ -137,11 +137,11 @@ void	FPPA0 (void)
 		if(V3_adc_value > 200)	V3_param = 254;	// 100%
 
 		// control A2 output
-		if(PWM_dutyCycle > V3_param)  PB.5 = 1;
-		else 						  PB.5 = 0;
+		if(PWM_dutyCycle > V3_param)  PB.4 = 1;
+		else 						  PB.4 = 0;
 
 		// when there is a high level on the line A1
-		if(PB.4 != 0) {
+		if(PB.5 != 0) {
 			if(onOffAlgoritmCounter	== 0)	onOffAlgoritmCounter = 1;	
 		}
 
@@ -149,18 +149,19 @@ void	FPPA0 (void)
 		switch(onOffAlgoritmCounter) {
 			// switch on enabling
 			case 0:
-				if(PB.4 != 0) onOffAlgoritmCounter = 1;
+				if(PB.5 != 0) onOffAlgoritmCounter = 1;
 			break;
 
 			// switch on, setup timer
 			case 1:
 				timeCounter = 0;
 				timeCounter_threshold = V1_param;
-				PWM_dutyCycle = 13;
+				//PWM_dutyCycle = 13;
 				tm2c = 0b00101010;
 				tm2b = PWM_dutyCycle;
 				PWM_dutyCycle_per = V1_param>>8;	// period of increment duty sycle
 				PWM_dutyCycle_per = PWM_dutyCycle_per + 1;
+
 				PWM_dutyCycle_counter = 0;
 				PWM_dutyCycle_dir = 1;
 				onOffAlgoritmCounter = 2;
@@ -168,13 +169,15 @@ void	FPPA0 (void)
 
 			// wait rising PWM duty cycle
 			case 2:
-				if(timeCounter >= timeCounter_threshold) onOffAlgoritmCounter = 3;
+				//if(timeCounter >= timeCounter_threshold)	onOffAlgoritmCounter = 3;
+				if(PWM_dutyCycle == 255) 					onOffAlgoritmCounter = 3;
+				if(PB.5 == 0) 								onOffAlgoritmCounter = 6;
 				tm2b = PWM_dutyCycle;
 			break;
 
 			// switch off enabling
 			case 3:
-				if(PB.4 == 0) onOffAlgoritmCounter = 4;
+				if(PB.5 == 0) onOffAlgoritmCounter = 4;
 			break;
 
 			// switch delay, setup timer
@@ -186,7 +189,7 @@ void	FPPA0 (void)
 
 			// wait while switch delay is work
 			case 5:
-				if(timeCounter >= timeCounter_threshold) onOffAlgoritmCounter = 6;
+				if(timeCounter >= timeCounter_threshold)	onOffAlgoritmCounter = 6;
 			break;
 
 			// switch off, setup timer
@@ -201,7 +204,9 @@ void	FPPA0 (void)
 			break;
 
 			case 7:
-				if(timeCounter >= timeCounter_threshold) onOffAlgoritmCounter = 8;
+				//if(timeCounter >= timeCounter_threshold)	onOffAlgoritmCounter = 8;
+				if(PWM_dutyCycle == 13) 						onOffAlgoritmCounter = 8;
+				if(PB.5 != 0) 								onOffAlgoritmCounter = 8;
 				tm2b = PWM_dutyCycle;
 			break;
 
