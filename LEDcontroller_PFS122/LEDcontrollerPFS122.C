@@ -137,7 +137,7 @@ void	FPPA0 (void)
 		if(V3_adc_value > 200)	V3_param = 254;	// 100%
 
 		// control A2 output
-		if(PWM_dutyCycle > V3_param) PB.5 = 1;
+		if(PWM_dutyCycle > V3_param)  PB.5 = 1;
 		else 						  PB.5 = 0;
 
 		// when there is a high level on the line A1
@@ -160,6 +160,7 @@ void	FPPA0 (void)
 				tm2c = 0b00101010;
 				tm2b = PWM_dutyCycle;
 				PWM_dutyCycle_per = V1_param>>8;	// period of increment duty sycle
+				PWM_dutyCycle_per = PWM_dutyCycle_per + 1;
 				PWM_dutyCycle_counter = 0;
 				PWM_dutyCycle_dir = 1;
 				onOffAlgoritmCounter = 2;
@@ -193,6 +194,7 @@ void	FPPA0 (void)
 				timeCounter = 0;
 				timeCounter_threshold = 6000;
 				PWM_dutyCycle_per = 6000>>8;
+				PWM_dutyCycle_per = PWM_dutyCycle_per + 1;
 				PWM_dutyCycle_counter = 0;
 				PWM_dutyCycle_dir = 0;
 				onOffAlgoritmCounter = 7;
@@ -212,7 +214,7 @@ void	FPPA0 (void)
 		}
 
 		#if defined (debug)
-			if(onOffAlgoritmCounter == 2) {
+			if(onOffAlgoritmCounter == 5) {
 				PB.7 = 1;
 			}
 			else {
