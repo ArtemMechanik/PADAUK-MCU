@@ -20,31 +20,36 @@ UART period send 200mS
 #define ADC_run_V1	0b11011000	// stert adc conversion on AD6 (PB6) - V1
 #define ADC_run_V2	0b11001000	// stert adc conversion on AD2 (PB2) - V2
 #define ADC_run_V3	0b11000000	// stert adc conversion on AD0 (PB0) - V3
+#define ADC_run_V4	0b11001100	// stert adc conversion on AD3 (PB3) - V4
 
 // variables
 BYTE A1_state = 0;
 BYTE A2_state = 0;
 WORD count16 = 132;
 BYTE onOffAlgoritmCounter = 0;
-BYTE PWM_dutyCycle = 13;
+BYTE PWM_dutyCycle = 0;
 BYTE PWM_dutyCycle_dir = 0; // 1-increment, 0-decrement
 BYTE PWM_dutyCycle_per = 1;
 BYTE PWM_dutyCycle_counter = 0;
+BYTE PWM_dutyCycle_max = 200;
 
 // ADC
 BYTE V1_adc_value = 0;
 BYTE V2_adc_value = 0;
 BYTE V3_adc_value = 0;
+BYTE V4_adc_value = 0;
 
 // param
 WORD V1_param = 0;
 WORD V2_param = 0;
 WORD V3_param = 0;
+WORD V4_param = 0;
 
 // flag
 BYTE V1_param_flag = 0;
 BYTE V2_param_flag = 0;
 BYTE V3_param_flag = 0;
+BYTE V4_param_flag = 0;
 
 //counters
 WORD timeCounter = 0;
@@ -76,12 +81,14 @@ void	FPPA0 (void)
 	// setup timer2 to generate PWM 15kHz on PA3
 	tm2c	= 0; 				//0b00101010; clock - IHRC (16 Mhz), output PWM - PA3, PWMmode, inverse the polarity - disable
 	tm2ct	= 0;
-	tm2s	= 0b01001111;		// 8bit PWM, pre-scalar = 16, clock scalar = 15
+	// tm2s	= 0b01001111;		// 8bit PWM, pre-scalar = 16, clock scalar = 15, F = 245Ãö
+	tm2s	= 0b01101001;		// 8bit PWM, pre-scalar = 64, clock scalar = 9, F = 100Ãö
+	//tm2s	= 0b01110010;		// 8bit PWM, pre-scalar = 64, clock scalar = 18, F = 50Ãö
 	tm2b	= PWM_dutyCycle;	// start duty cycle = 5%
 
 	PBDIER	= 0b00100000;	// disable all wake-up event from portB
 	PB		= 0b00000000;
-	PBC 	= 0b10010010;	// PB7-output (test), PB5 - input, PB4 - output, PB1 - output (UART)
+	PBC 	= 0b10010000;	// PB7-output (test), PB5 - input, PB4 - output
 	PBPL	= 0b00100000;	// PB5 - pull-low 
 
 	// setup timer16 to generate interrupt 1kHz
@@ -115,6 +122,10 @@ void	FPPA0 (void)
 		while(!AD_DONE) NULL; 
 		V3_adc_value = ADCRH;
 
+		adcc = ADC_run_V4; 	
+		while(!AD_DONE) NULL; 
+		V4_adc_value = ADCRH;
+
 		// set V1,V2,V3 modes, set parameters according to the modes
 		V1_param = 1500;
 		V1_param_flag = 0;
@@ -145,6 +156,10 @@ void	FPPA0 (void)
 			if(onOffAlgoritmCounter	== 0)	onOffAlgoritmCounter = 1;	
 		}
 
+		PWM_dutyCycle_max = V4_adc_value;
+		if(PWM_dutyCycle_max < 1) PWM_dutyCycle_max = 1;
+		if(PWM_dutyCycle_max > 254) PWM_dutyCycle_max = 255;
+
 
 		switch(onOffAlgoritmCounter) {
 			// switch on enabling
@@ -170,7 +185,7 @@ void	FPPA0 (void)
 			// wait rising PWM duty cycle
 			case 2:
 				//if(timeCounter >= timeCounter_threshold)	onOffAlgoritmCounter = 3;
-				if(PWM_dutyCycle == 255) 					onOffAlgoritmCounter = 3;
+				if(PWM_dutyCycle == PWM_dutyCycle_max) 					onOffAlgoritmCounter = 3;
 				if(PB.5 == 0) 								onOffAlgoritmCounter = 6;
 				tm2b = PWM_dutyCycle;
 			break;
@@ -178,6 +193,8 @@ void	FPPA0 (void)
 			// switch off enabling
 			case 3:
 				if(PB.5 == 0) onOffAlgoritmCounter = 4;
+				PWM_dutyCycle = PWM_dutyCycle_max;
+				tm2b = PWM_dutyCycle;
 			break;
 
 			// switch delay, setup timer
@@ -199,13 +216,13 @@ void	FPPA0 (void)
 				PWM_dutyCycle_per = 6000>>8;
 				PWM_dutyCycle_per = PWM_dutyCycle_per + 1;
 				PWM_dutyCycle_counter = 0;
-				PWM_dutyCycle_dir = 0;
+				PWM_dutyCycle_dir = 2;
 				onOffAlgoritmCounter = 7;
 			break;
 
 			case 7:
 				//if(timeCounter >= timeCounter_threshold)	onOffAlgoritmCounter = 8;
-				if(PWM_dutyCycle == 13) 						onOffAlgoritmCounter = 8;
+				if(PWM_dutyCycle == 1) 						onOffAlgoritmCounter = 8;
 				if(PB.5 != 0) 								onOffAlgoritmCounter = 8;
 				tm2b = PWM_dutyCycle;
 			break;
@@ -250,7 +267,7 @@ void	Interrupt (void)
 		if(timeCounter < timeCounter_threshold) timeCounter = timeCounter + 1;
 
 		if(PWM_dutyCycle_dir == 1) {
-			if(PWM_dutyCycle < 255) {
+			if(PWM_dutyCycle < PWM_dutyCycle_max) {
 				PWM_dutyCycle_counter += 1;
 				if(PWM_dutyCycle_counter >=  PWM_dutyCycle_per) {
 					PWM_dutyCycle_counter = 0;
@@ -258,7 +275,7 @@ void	Interrupt (void)
 				}
 			}
 		}
-		else {
+		else if(PWM_dutyCycle_dir == 2) {
 			if(PWM_dutyCycle > 0) {
 				PWM_dutyCycle_counter += 1;
 				if(PWM_dutyCycle_counter >=  PWM_dutyCycle_per) {
