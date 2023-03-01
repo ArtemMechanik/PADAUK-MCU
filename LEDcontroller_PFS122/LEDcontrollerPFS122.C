@@ -68,11 +68,30 @@ BYTE tempData;
 BYTE uartDataBitCounter = 0;
 BYTE uartPeriodCounter = 0;
 
+// PWM duty-cyclte
+BYTE PWM_dutyCycle_Table [15] = {4,6,9,13,18,23,30,39,49,62,76,111,152,197,255};
+BYTE PWM_dutyCycle_per_Table1 [15] = {38,38,25,19,15,15,11,8,8,6,5,4,4,3,3};
+BYTE PWM_dutyCycle_per_Table2 [15] = {75,75,50,38,30,30,21,17,15,12,11,9,7,7,5};
+BYTE PWM_dutyCycle_per_Table3 [15] = {113,113,75,56,45,45,32,25,23,17,16,13,11,10,8};
+BYTE PWM_dutyCycle_per_Table4 [15] = {150,150,100,75,60,60,43,33,30,23,21,17,15,13,10};
+
+WORD 	pntPerStart;
+WORD	pntPerEnd; 
+WORD	pntPerCounter; 
+WORD	pntStart; 
+WORD	pntEND; 
+WORD	pntCounter;
+
 void	FPPA0 (void)
 {
 	.ADJUST_IC	SYSCLK=IHRC/2, IHRC=16MHz, VDD=5V, Init_RAM	// clock frequency 8MHz
 
 	GPCC.7	= 0;	// comparator disable
+
+	pntStart = & PWM_dutyCycle_Table[0];
+	pntEND = & PWM_dutyCycle_Table[14];
+	pntCounter = pntStart;
+	PWM_dutyCycle_counter = 0;
 
 	// ADC setup
 	adcc	= 0b10011000;	// adc enable, AD6 (PB6)
@@ -112,19 +131,16 @@ void	FPPA0 (void)
 		// read ADC
 		adcc = ADC_run_V1; 	
 		while(!AD_DONE) NULL; 
-		V1_adc_value = ADCRH; 
+		V2_adc_value = ADCRH; 
 
 		adcc = ADC_run_V2; 	
 		while(!AD_DONE) NULL; 
-		V2_adc_value = ADCRH; 
+		V1_adc_value = ADCRH; 
 
 		adcc = ADC_run_V3; 	
 		while(!AD_DONE) NULL; 
 		V3_adc_value = ADCRH;
 
-		adcc = ADC_run_V4; 	
-		while(!AD_DONE) NULL; 
-		V4_adc_value = ADCRH;
 
 		// set V1,V2,V3 modes, set parameters according to the modes
 		V1_param = 1500;
@@ -156,11 +172,6 @@ void	FPPA0 (void)
 			if(onOffAlgoritmCounter	== 0)	onOffAlgoritmCounter = 1;	
 		}
 
-		PWM_dutyCycle_max = V4_adc_value;
-		if(PWM_dutyCycle_max < 1) PWM_dutyCycle_max = 1;
-		if(PWM_dutyCycle_max > 254) PWM_dutyCycle_max = 255;
-
-
 		switch(onOffAlgoritmCounter) {
 			// switch on enabling
 			case 0:
@@ -174,26 +185,52 @@ void	FPPA0 (void)
 				//PWM_dutyCycle = 13;
 				tm2c = 0b00101010;
 				tm2b = PWM_dutyCycle;
-				PWM_dutyCycle_per = V1_param>>8;	// period of increment duty sycle
-				PWM_dutyCycle_per = PWM_dutyCycle_per + 1;
 
 				PWM_dutyCycle_counter = 0;
+
+				switch(V1_param_flag) {
+					case 0:
+						pntPerStart = & PWM_dutyCycle_per_Table1[0];
+						pntPerEnd = & PWM_dutyCycle_per_Table1[14];
+						pntPerCounter = pntPerStart + pntCounter - pntStart;
+					break;
+					case 1:
+						pntPerStart = & PWM_dutyCycle_per_Table1[0];
+						pntPerEnd = & PWM_dutyCycle_per_Table1[14];
+						pntPerCounter = pntPerStart + pntCounter - pntStart;
+					break;
+					case 2:
+						pntPerStart = & PWM_dutyCycle_per_Table2[0];
+						pntPerEnd = & PWM_dutyCycle_per_Table2[14];
+						pntPerCounter =pntPerStart +  pntCounter - pntStart;
+					break;
+					case 3:
+						pntPerStart = & PWM_dutyCycle_per_Table3[0];
+						pntPerEnd = & PWM_dutyCycle_per_Table3[14];
+						pntPerCounter = pntPerStart + pntCounter - pntStart;
+					break;
+					case 4:
+						pntPerStart = & PWM_dutyCycle_per_Table4[0];
+						pntPerEnd = & PWM_dutyCycle_per_Table4[14];
+						pntPerCounter = pntPerStart + pntCounter - pntStart;
+					break;
+				}
+
 				PWM_dutyCycle_dir = 1;
 				onOffAlgoritmCounter = 2;
 			break;
 
 			// wait rising PWM duty cycle
 			case 2:
-				//if(timeCounter >= timeCounter_threshold)	onOffAlgoritmCounter = 3;
-				if(PWM_dutyCycle == PWM_dutyCycle_max) 					onOffAlgoritmCounter = 3;
-				if(PB.5 == 0) 								onOffAlgoritmCounter = 6;
+				if(PWM_dutyCycle == 255) 		onOffAlgoritmCounter = 3;
+				if(PB.5 == 0) 					onOffAlgoritmCounter = 6;
 				tm2b = PWM_dutyCycle;
 			break;
 
 			// switch off enabling
 			case 3:
 				if(PB.5 == 0) onOffAlgoritmCounter = 4;
-				PWM_dutyCycle = PWM_dutyCycle_max;
+				//PWM_dutyCycle = PWM_dutyCycle_max;
 				tm2b = PWM_dutyCycle;
 			break;
 
@@ -212,10 +249,13 @@ void	FPPA0 (void)
 			// switch off, setup timer
 			case 6:
 				timeCounter = 0;
-				timeCounter_threshold = 6000;
-				PWM_dutyCycle_per = 6000>>8;
-				PWM_dutyCycle_per = PWM_dutyCycle_per + 1;
+
 				PWM_dutyCycle_counter = 0;
+
+				pntPerStart = & PWM_dutyCycle_per_Table4[0];
+				pntPerEnd = & PWM_dutyCycle_per_Table4[14];
+				pntPerCounter =  pntPerStart + pntCounter - pntStart;
+
 				PWM_dutyCycle_dir = 2;
 				onOffAlgoritmCounter = 7;
 			break;
@@ -229,6 +269,7 @@ void	FPPA0 (void)
 
 			case 8:
 				tm2c = 0;
+				//PWM_dutyCycle = 0;
 				onOffAlgoritmCounter = 0;
 			break;
 
@@ -267,6 +308,41 @@ void	Interrupt (void)
 		if(timeCounter < timeCounter_threshold) timeCounter = timeCounter + 1;
 
 		if(PWM_dutyCycle_dir == 1) {
+			if(PWM_dutyCycle < 255) {
+				if(PWM_dutyCycle < *pntCounter) {
+						PWM_dutyCycle_counter += 1;
+						if(PWM_dutyCycle_counter >=  *pntPerCounter) {
+							PWM_dutyCycle_counter = 0;
+							PWM_dutyCycle = PWM_dutyCycle + 1;
+						
+						}
+				}
+				else {
+						pntCounter = pntCounter + 1;
+						pntPerCounter = pntPerCounter + 1;
+				}
+			
+			}
+		}
+		else if(PWM_dutyCycle_dir == 2) {
+			if(PWM_dutyCycle > 0) {
+				if(PWM_dutyCycle > *pntCounter) {
+						PWM_dutyCycle_counter += 1;
+						if(PWM_dutyCycle_counter >=  *pntPerCounter) {
+							PWM_dutyCycle_counter = 0;
+							PWM_dutyCycle = PWM_dutyCycle - 1;
+						
+						}
+				}
+				else {
+						pntCounter = pntCounter - 1;
+						pntPerCounter = pntPerCounter - 1;
+				}
+			}
+		}
+		/*
+		old algoritm
+		if(PWM_dutyCycle_dir == 1) {
 			if(PWM_dutyCycle < PWM_dutyCycle_max) {
 				PWM_dutyCycle_counter += 1;
 				if(PWM_dutyCycle_counter >=  PWM_dutyCycle_per) {
@@ -284,7 +360,7 @@ void	Interrupt (void)
 				}
 			}
 		}
-
+		*/
 		
 		// UART transmit period = 200mS
 		uartPeriodCounter = uartPeriodCounter + 1;
